@@ -44,6 +44,7 @@
 #include <linux/mutex.h>
 #include <linux/debugfs.h>
 #include <linux/regulator/consumer.h>
+#include <linux/input/doubletap2wake.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif /* CONFIG_HAS_EARLYSUSPEND */
@@ -2942,10 +2943,15 @@ static int cyttsp_resume(struct device *dev)
 	struct cyttsp *ts = dev_get_drvdata(dev);
 	int retval = CY_OK;
 
+	/* ngxson */
+	bool prevent_sleep = false;
+	prevent_sleep = prevent_sleep || (dt2w_switch > 0);
+
 	cyttsp_debug("Wake Up\n");
 
 	if (device_may_wakeup(dev)) {
 		if (ts->client->irq)
+			if (prevent_sleep)
 			disable_irq_wake(ts->client->irq);
 		return 0;
 	}
@@ -3013,10 +3019,15 @@ static int cyttsp_suspend(struct device *dev)
 	u8 sleep_mode = CY_OK;
 	int retval = CY_OK;
 
+	/* ngxson */
+	bool prevent_sleep = false;
+	prevent_sleep = prevent_sleep || (dt2w_switch > 0);
+
 	cyttsp_debug("Enter Sleep\n");
 
 	if (device_may_wakeup(dev)) {
 		if (ts->client->irq)
+			if (prevent_sleep)
 			enable_irq_wake(ts->client->irq);
 		return 0;
 	}
@@ -3035,6 +3046,7 @@ static int cyttsp_suspend(struct device *dev)
 	}
 	mutex_unlock(&ts->mutex);
 
+if (!prevent_sleep) {
 
 	if (ts->client->irq == 0)
 		del_timer(&ts->timer);
@@ -3079,7 +3091,7 @@ static int cyttsp_suspend(struct device *dev)
 		"ACTIVE" : \
 		((ts->platform_data->power_state == CY_SLEEP_STATE) ? \
 		"SLEEP" : "LOW POWER"));
-
+}
 	return retval;
 }
 #endif
@@ -3181,4 +3193,3 @@ static void cyttsp_exit(void)
 module_init(cyttsp_init);
 module_exit(cyttsp_exit);
 MODULE_FIRMWARE("cyttsp.fw");
-
